@@ -1,5 +1,0 @@
-requests
-xlsxwriter
-pandas
-numpy==1.21.2
-boto3
