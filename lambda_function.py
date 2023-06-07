@@ -8,8 +8,6 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-# sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "./vendored"))
-
 class AwsDailCostAnalysis():
 
     def __init__(self) -> None:
