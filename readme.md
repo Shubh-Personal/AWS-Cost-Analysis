@@ -15,7 +15,7 @@ This lambda function fetches cost for specific services from cost explorer servi
 - AWS Simple Email Service
 - AWS EventBridge Services
 
-# Steps for development
+# Steps For Project Setup 
 
 - Setup AWS Simple Email Service
 	1.  Open Aws console and open AWS SES
