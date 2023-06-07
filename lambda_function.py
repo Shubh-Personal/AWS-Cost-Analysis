@@ -131,8 +131,11 @@ def getDate():
 
 def lambda_handler(event, context):
     try:
+        #Creating AwsDailCostAnalysis
         dailyCost = AwsDailCostAnalysis()
+        #Generating chart
         dailyCost.generatePieChart()
+        #sending email
         dailyCost.send_email()
         return {
             'statusCode': 200,
