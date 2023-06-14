@@ -82,7 +82,7 @@ class AwsDailCostAnalysis():
         worksheet.write_column('A2', services)
         worksheet.write_column('B2', cost)
         #selecting chart type
-        chart = workbook.add_chart({'type': 'bar'})
+        chart = workbook.add_chart({'type': 'column'})
         #Adding data in chart
         chart.add_series({
         'categories': '=Sheet1!$A$2:$A$7',
