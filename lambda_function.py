@@ -66,7 +66,6 @@ class AwsDailCostAnalysis():
 
     #function for generating pie chart for data
     def generatePieChart(self):
-        #changing directory
         os.chdir("/tmp")
         #getting the cost related data
         services, cost = self.getCostByServices()
@@ -133,12 +132,12 @@ def getDate():
 
 def lambda_handler(event, context):
     try:
-        #Creating AwsDailCostAnalysis
         dailyCost = AwsDailCostAnalysis()
         #Generating chart
         dailyCost.generatePieChart()
         #sending email
         dailyCost.send_email()
+        #Creating AwsDailCostAnalysis
         return {
             'statusCode': 200,
             'body': json.dumps('Report sent!')
