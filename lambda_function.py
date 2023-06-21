@@ -124,7 +124,7 @@ def getDate():
     #Getting current date with time
     current_time = datetime.now()
     #Getting previous day with time
-    previous_time = current_time - timedelta(days=1)
+    previous_time = current_time - timedelta(days=6)
     #Formatting datetime to date
     current_date_formatted = current_time.strftime('%Y-%m-%d')
     previous_date_formatted = previous_time.strftime('%Y-%m-%d')
