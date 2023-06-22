@@ -64,8 +64,8 @@ class AwsDailCostAnalysis():
         y_data.append(float(total))
         return x_data,y_data
 
-    #function for generating pie chart for data
-    def generatePieChart(self):
+    #function for generating  chart for data
+    def generateChart(self):
         os.chdir("/tmp")
         #getting the cost related data
         services, cost = self.getCostByServices()
@@ -134,7 +134,7 @@ def lambda_handler(event, context):
     try:
         dailyCost = AwsDailCostAnalysis()
         #Generating chart
-        dailyCost.generatePieChart()
+        dailyCost.generateChart()
         #sending email
         dailyCost.send_email()
         #Creating AwsDailCostAnalysis
