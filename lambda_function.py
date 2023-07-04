@@ -9,6 +9,29 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+RESULT_FOR_LAST_DAYS = 6
+GROUP_BY = [
+    {"Type": "DIMENSION", "Key": "SERVICE"}
+]
+METRICS = [
+    'UnblendedCost',
+]
+FILTER = {
+    "Dimensions": {
+        'Key': 'SERVICE',
+        'Values': [
+            'Amazon Elastic Compute Cloud - Compute',
+            'Amazon Simple Email Service',
+            'AWS Lambda',
+            'Amazon Elastic File System',
+            'AWS Cost Explorer',
+            'EC2 - Other'
+        ],
+        'MatchOptions': ['EQUALS']
+    }
+}
+GRANULARITY = 'DAILY'
+
 # Class for fetching daily cost using cost explorer and generating excel
 
 
@@ -16,32 +39,13 @@ class AwsDailCostAnalysis():
 
     # constructor for setting up aws services object
     def __init__(self,
-                 last_days=6,
-                 granularity='DAILY',
-                 group_by=[
-                     {"Type": "DIMENSION", "Key": "SERVICE"}
-                 ],
-                 metrics=[
-                     'UnblendedCost',
-                 ],
-                 filter={
-                     "Dimensions": {
-                         'Key': 'SERVICE',
-                         'Values': [
-                             'Amazon Elastic Compute Cloud - Compute',
-                             'Amazon Simple Email Service',
-                             'AWS Lambda',
-                             'Amazon Elastic File System',
-                             'AWS Cost Explorer',
-                             'EC2 - Other'
-                         ],
-                         'MatchOptions': ['EQUALS']
-                     }
-                 }
+                 granularity,
+                 group_by,
+                 metrics,
+                 filter
                  ) -> None:
         self.ses = boto3.client('ses', region_name='us-east-1')
         self.ce = boto3.client('ce')
-        self.last_days = last_days
         self.granularity = granularity
         self.group_by = group_by
         self.metrics = metrics
@@ -139,7 +143,7 @@ def getDate():
     # Getting current date with time
     current_time = datetime.now()
     # Getting previous day with time
-    previous_time = current_time - timedelta(days=LAST_DAYS)
+    previous_time = current_time - timedelta(days=RESULT_FOR_LAST_DAYS)
     # Formatting datetime to date
     current_date_formatted = current_time.strftime('%Y-%m-%d')
     previous_date_formatted = previous_time.strftime('%Y-%m-%d')
@@ -148,7 +152,8 @@ def getDate():
 
 def lambda_handler(event, context):
     try:
-        dailyCost = AwsDailCostAnalysis()
+        dailyCost = AwsDailCostAnalysis(
+            filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS)
         # Generating chart
         dailyCost.generateChart()
         # sending email
