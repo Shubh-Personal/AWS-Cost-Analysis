@@ -31,6 +31,7 @@ FILTER = {
     }
 }
 GRANULARITY = 'DAILY'
+EMAIL_ADDRESS = 'shubhpatel4799@gmail.com'
 
 # Class for fetching daily cost using cost explorer and generating excel
 
@@ -42,7 +43,8 @@ class AwsDailCostAnalysis():
                  granularity,
                  group_by,
                  metrics,
-                 filter
+                 filter,
+                 email
                  ) -> None:
         self.ses = boto3.client('ses', region_name='us-east-1')
         self.ce = boto3.client('ce')
@@ -50,6 +52,7 @@ class AwsDailCostAnalysis():
         self.group_by = group_by
         self.metrics = metrics
         self.filter = filter
+        self.email_address = email
 
     # function for getting aws daily cost for specific services
     def getCostByServices(self):
@@ -117,8 +120,8 @@ class AwsDailCostAnalysis():
     def send_email(self, filename="cost_analysis.xlsx"):
         msg = MIMEMultipart()
         # Metadata for Email
-        msg['From'] = "shubhpatel4799@gmail.com"
-        msg['To'] = "shubhpatel4799@gmail.com"
+        msg['From'] = self.email_address
+        msg['To'] = self.email_address
         msg['Subject'] = "AWS Daily Cost Analysis"
         text = "Find your Cost Analysis report below\n\n"
         # Adding Email Body (Text and File)
@@ -134,7 +137,7 @@ class AwsDailCostAnalysis():
         # Sending email
         result = self.ses.send_raw_email(
             Source=msg['From'],
-            Destinations=["shubhpatel4799@gmail.com"],
+            Destinations=[self.email_address],
             RawMessage={'Data': msg.as_string()}
         )
 
@@ -153,7 +156,7 @@ def getDate():
 def lambda_handler(event, context):
     try:
         dailyCost = AwsDailCostAnalysis(
-            filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS)
+            filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
         # Generating chart
         dailyCost.generateChart()
         # sending email
