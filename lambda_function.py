@@ -9,7 +9,8 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-RESULT_FOR_LAST_DAYS = 6
+# Variables
+RESULT_FOR_LAST_DAYS = 2
 GROUP_BY = [
     {"Type": "DIMENSION", "Key": "SERVICE"}
 ]
@@ -25,9 +26,9 @@ FILTER = {
             'AWS Lambda',
             'Amazon Elastic File System',
             'AWS Cost Explorer',
-            'EC2 - Other'
-        ],
-        'MatchOptions': ['EQUALS']
+            'EC2 - Other',
+            'Amazon Elastic Container Service for Kubernetes'
+        ]
     }
 }
 GRANULARITY = 'DAILY'
@@ -70,6 +71,7 @@ class AwsDailCostAnalysis():
             Filter=self.filter
         )
         # Fetching response data
+        print(response)
         data = response["ResultsByTime"][0]["Groups"]
         x_data = []
         y_data = []
@@ -106,8 +108,8 @@ class AwsDailCostAnalysis():
         chart = workbook.add_chart({'type': 'column'})
         # Adding data in chart
         chart.add_series({
-            'categories': '=Sheet1!$A$2:$A$7',
-            'values': '=Sheet1!$B$2:$B$7',
+            'categories': '=Sheet1!$A$2:$A$12',
+            'values': '=Sheet1!$B$2:$B$12',
         })
         # Setting metadata for chart
         chart.set_title({'name': 'AWS Daily Unblended Cost Analysis'})
@@ -167,7 +169,5 @@ def lambda_handler(event, context):
             'body': json.dumps('Report sent!')
         }
     except Exception as e:
-        return {
-            'statusCode': 500,
-            'body': json.dumps('Something went wrong!!')
-        }
+
+        print(e)
