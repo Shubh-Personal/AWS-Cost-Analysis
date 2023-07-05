@@ -25,11 +25,7 @@ FILTER = {
                 'Values': [
                     'Amazon Elastic Compute Cloud - Compute',
                     'Amazon Simple Email Service',
-                    'AWS Lambda',
-                    'Amazon Elastic File System',
-                    'AWS Cost Explorer',
-                    'EC2 - Other',
-                    'Amazon Elastic Container Service for Kubernetes'
+                    'EC2 - Other'
                 ]
             }
         },
