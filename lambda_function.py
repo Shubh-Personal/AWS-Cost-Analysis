@@ -81,18 +81,31 @@ class AwsDailCostAnalysis():
             Filter=self.filter
         )
         # Fetching response data
-        print(response)
-        data = response["ResultsByTime"][0]["Groups"]
+        result_data = {}
         x_data = []
         y_data = []
+        cost_data = response['ResultsByTime']
+        for result in cost_data:
+            start = result['TimePeriod']['Start']
+            end = result['TimePeriod']['End']
+            groups = result['Groups']
+
+            print(f"Period: {start} to {end}")
+            for group in groups:
+                cost = group['Metrics']['UnblendedCost']['Amount']
+                service = group['Keys'][0]
+                if service in result_data:
+                    result_data[service] += float(cost)
+                else:
+                    result_data[service] = float(cost)
+                currency = group['Metrics']['UnblendedCost']['Unit']
+        # Appending all accumlated cost
         total = 0
-        # Fetching services and their cost
-        for costData in data:
-            x_data.append(costData["Keys"][0])
-            y_data.append(
-                float(costData["Metrics"]["UnblendedCost"]["Amount"]))
-            total += float(costData["Metrics"]["UnblendedCost"]["Amount"])
-        # Gettign the total cost
+        for key_data in result_data:
+            x_data.append(key_data)
+            y_data.append(float(result_data[key_data]))
+            total += float(result_data[key_data])
+
         x_data.append("Total")
 
         y_data.append(float(total))
@@ -167,18 +180,18 @@ def getDate():
 
 
 def lambda_handler(event, context):
+
+    dailyCost = AwsDailCostAnalysis(
+        filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
+    # Generating chart
+    dailyCost.generateChart()
+    # sending email
+    dailyCost.send_email()
+    # Creating AwsDailCostAnalysis
     try:
-        dailyCost = AwsDailCostAnalysis(
-            filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
-        # Generating chart
-        dailyCost.generateChart()
-        # sending email
-        dailyCost.send_email()
-        # Creating AwsDailCostAnalysis
         return {
             'statusCode': 200,
             'body': json.dumps('Report sent!')
         }
     except Exception as e:
-
         print(e)
