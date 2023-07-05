@@ -24,8 +24,9 @@ FILTER = {
                 'Key': 'SERVICE',
                 'Values': [
                     'Amazon Elastic Compute Cloud - Compute',
-                    'Amazon Simple Email Service',
-                    'EC2 - Other'
+                    'AWS Lambda',
+                    'EC2 - Other',
+                    'Amazon Elastic Container Service for Kubernetes'
                 ]
             }
         },
