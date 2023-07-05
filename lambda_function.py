@@ -10,7 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 # Variables
-RESULT_FOR_LAST_DAYS = 2
+RESULT_FOR_LAST_DAYS = 6
 GROUP_BY = [
     {"Type": "DIMENSION", "Key": "SERVICE"}
 ]
@@ -18,18 +18,28 @@ METRICS = [
     'UnblendedCost',
 ]
 FILTER = {
-    "Dimensions": {
-        'Key': 'SERVICE',
-        'Values': [
-            'Amazon Elastic Compute Cloud - Compute',
-            'Amazon Simple Email Service',
-            'AWS Lambda',
-            'Amazon Elastic File System',
-            'AWS Cost Explorer',
-            'EC2 - Other',
-            'Amazon Elastic Container Service for Kubernetes'
-        ]
-    }
+    'Or': [
+        {
+            "Dimensions": {
+                'Key': 'SERVICE',
+                'Values': [
+                    'Amazon Elastic Compute Cloud - Compute',
+                    'Amazon Simple Email Service',
+                    'AWS Lambda',
+                    'Amazon Elastic File System',
+                    'AWS Cost Explorer',
+                    'EC2 - Other',
+                    'Amazon Elastic Container Service for Kubernetes'
+                ]
+            }
+        },
+        {
+            "Tags": {
+                'Key': 'app',
+                'Values': ['cost_collection']
+            }
+        }
+    ]
 }
 GRANULARITY = 'DAILY'
 EMAIL_ADDRESS = 'shubhpatel4799@gmail.com'
@@ -84,6 +94,7 @@ class AwsDailCostAnalysis():
             total += float(costData["Metrics"]["UnblendedCost"]["Amount"])
         # Gettign the total cost
         x_data.append("Total")
+
         y_data.append(float(total))
         return x_data, y_data
 
