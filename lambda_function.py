@@ -63,7 +63,7 @@ class AwsDailCostAnalysis():
         self.email_address = email
 
     # function for getting aws daily cost for specific services
-    def getCostByServices(self):
+    def getCostByServicesAndGenerateChart(self):
         # getting the today and previous day for gettig cost
         end_date, start_date = getDate()
         # getting Aws cost for specific resources
@@ -78,65 +78,72 @@ class AwsDailCostAnalysis():
             Filter=self.filter
         )
         # Fetching response data
-        result_data = {}
-        x_data = []
-        y_data = []
-        cost_data = response['ResultsByTime']
-        for result in cost_data:
+        dates = []
+        services = set()
+        costs_by_service = {}
+        os.chdir("/tmp")
+        # print(response)
+        for result in response["ResultsByTime"]:
             start = result['TimePeriod']['Start']
             end = result['TimePeriod']['End']
+            dates.append(start)
             groups = result['Groups']
-
-            print(f"Period: {start} to {end}")
+    
             for group in groups:
-                cost = group['Metrics']['UnblendedCost']['Amount']
                 service = group['Keys'][0]
-                if service in result_data:
-                    result_data[service] += float(cost)
-                else:
-                    result_data[service] = float(cost)
-                currency = group['Metrics']['UnblendedCost']['Unit']
-        # Appending all accumlated cost
-        total = 0
-        for key_data in result_data:
-            x_data.append(key_data)
-            y_data.append(float(result_data[key_data]))
-            total += float(result_data[key_data])
-
-        x_data.append("Total")
-
-        y_data.append(float(total))
-        return x_data, y_data
-
-    # function for generating  chart for data
-    def generateChart(self):
-        os.chdir("/tmp")
-        # getting the cost related data
-        services, cost = self.getCostByServices()
-        # Creating new Excel sheet
+                cost = float(group['Metrics']['UnblendedCost']['Amount'])
+                services.add(service)
+    
+                if service not in costs_by_service:
+                    costs_by_service[service] = []
+                costs_by_service[service].append(cost)
+                
+        # Create Excel file and worksheet
         workbook = xlsxwriter.Workbook('cost_analysis.xlsx')
-        # Adding new worksheet
         worksheet = workbook.add_worksheet()
-        # Create a bold format
-        bold_format = workbook.add_format({'bold': True})
-        # Adding Header Column for data
-        worksheet.write('A1', 'AWS Services', bold_format)
-        worksheet.write('B1', 'Cost', bold_format)
-        # Adding data in Excel file from list
-        worksheet.write_column('A2', services)
-        worksheet.write_column('B2', cost)
-        # selecting chart type
-        chart = workbook.add_chart({'type': 'column'})
-        # Adding data in chart
-        chart.add_series({
-            'categories': '=Sheet1!$A$2:$A$12',
-            'values': '=Sheet1!$B$2:$B$12',
-        })
-        # Setting metadata for chart
-        chart.set_title({'name': 'AWS Daily Unblended Cost Analysis'})
-        chart.set_legend({'position': 'right'})
-        # Adding chart at D2 cel with 1.5 scale
-        worksheet.insert_chart('D2', chart, {'x_scale': 1.5, 'y_scale': 1.5})
+    
+        # Write data to worksheet
+        row = 0
+        col = 0
+        worksheet.write(row, col, 'Date')
+        for service in services:
+            worksheet.write(row, col + 1, service)
+            col += 1
+    
+        for i, date in enumerate(dates):
+            row = i + 1
+            col = 0
+            worksheet.write(row, col, date)
+            
+            for service in services:
+                col += 1
+                cost=0
+                if i>=len(costs_by_service[service]):
+                    cost = 0 
+                else:
+                    cost = costs_by_service[service][i]
+                worksheet.write(row, col, cost)
+    
+        # Create stack graph
+        col=0
+        chart = workbook.add_chart({'type': 'column', 'subtype': 'stacked'})
+        for service in services:
+            col += 1
+            print(col)
+            print(service)
+            #     [sheetname, first_row, first_col, last_row, last_col]
+            chart.add_series({
+                'name': service,
+                'categories': ['Sheet1', 1, 0, len(dates), 0],
+                'values': ['Sheet1', 1, col, len(dates), col]
+            })
+        chart.set_x_axis({'name': 'Date'})
+        chart.set_y_axis({'name': 'Cost'})
+        chart.set_title({'name': 'Cost Distribution by Service Over Time'})
+    
+        worksheet.insert_chart('E2', chart)
+    
+        # Close the workbook
         workbook.close()
 
     # this function sends the generated email to user
@@ -181,7 +188,7 @@ def lambda_handler(event, context):
     dailyCost = AwsDailCostAnalysis(
         filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
     # Generating chart
-    dailyCost.generateChart()
+    dailyCost.getCostByServicesAndGenerateChart()
     # sending email
     dailyCost.send_email()
     # Creating AwsDailCostAnalysis
