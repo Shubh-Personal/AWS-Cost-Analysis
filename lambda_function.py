@@ -12,31 +12,14 @@ from email.mime.text import MIMEText
 # Variables
 RESULT_FOR_LAST_DAYS = 6
 GROUP_BY = [
-    {"Type": "DIMENSION", "Key": "SERVICE"}
+    {"Type": "TAG", "Key": "kubernetes.io/cluster/EksShubh"},
+    {"Type": "TAG", "Key": "kubernetes.io/cluster/EksShubhCluster"}
 ]
 METRICS = [
     'UnblendedCost',
 ]
 FILTER = {
-    'Or': [
-        {
-            "Dimensions": {
-                'Key': 'SERVICE',
-                'Values': [
-                    'Amazon Elastic Compute Cloud - Compute',
-                    'AWS Lambda',
-                    'EC2 - Other',
-                    'Amazon Elastic Container Service for Kubernetes'
-                ]
-            }
-        },
-        {
-            "Tags": {
-                'Key': 'app',
-                'Values': ['cost_collection']
-            }
-        }
-    ]
+
 }
 GRANULARITY = 'DAILY'
 EMAIL_ADDRESS = 'shubhpatel4799@gmail.com'
@@ -74,11 +57,13 @@ class AwsDailCostAnalysis():
             },
             Granularity=self.granularity,
             Metrics=self.metrics,
-            GroupBy=self.group_by,
-            Filter=self.filter
+            GroupBy=self.group_by
+            # ,
+            # Filter=self.filter
         )
         # Fetching response data
         dates = []
+        print(response)
         services = set()
         costs_by_service = {}
         os.chdir("/tmp")
@@ -88,20 +73,20 @@ class AwsDailCostAnalysis():
             end = result['TimePeriod']['End']
             dates.append(start)
             groups = result['Groups']
-    
+
             for group in groups:
                 service = group['Keys'][0]
                 cost = float(group['Metrics']['UnblendedCost']['Amount'])
                 services.add(service)
-    
+
                 if service not in costs_by_service:
                     costs_by_service[service] = []
                 costs_by_service[service].append(cost)
-                
+
         # Create Excel file and worksheet
         workbook = xlsxwriter.Workbook('cost_analysis.xlsx')
         worksheet = workbook.add_worksheet()
-    
+
         # Write data to worksheet
         row = 0
         col = 0
@@ -109,23 +94,23 @@ class AwsDailCostAnalysis():
         for service in services:
             worksheet.write(row, col + 1, service)
             col += 1
-    
+
         for i, date in enumerate(dates):
             row = i + 1
             col = 0
             worksheet.write(row, col, date)
-            
+
             for service in services:
                 col += 1
-                cost=0
-                if i>=len(costs_by_service[service]):
-                    cost = 0 
+                cost = 0
+                if i >= len(costs_by_service[service]):
+                    cost = 0
                 else:
                     cost = costs_by_service[service][i]
                 worksheet.write(row, col, cost)
-    
+
         # Create stack graph
-        col=0
+        col = 0
         chart = workbook.add_chart({'type': 'column', 'subtype': 'stacked'})
         for service in services:
             col += 1
@@ -140,9 +125,9 @@ class AwsDailCostAnalysis():
         chart.set_x_axis({'name': 'Date'})
         chart.set_y_axis({'name': 'Cost'})
         chart.set_title({'name': 'Cost Distribution by Service Over Time'})
-    
+
         worksheet.insert_chart('E2', chart)
-    
+
         # Close the workbook
         workbook.close()
 
@@ -184,7 +169,7 @@ def getDate():
 
 
 def lambda_handler(event, context):
-
+    # get_tag_values('EksShubh')
     dailyCost = AwsDailCostAnalysis(
         filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
     # Generating chart
