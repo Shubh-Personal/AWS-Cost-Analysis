@@ -11,12 +11,11 @@ from email.mime.text import MIMEText
 
 # Variables
 RESULT_FOR_LAST_DAYS = 6
-GROUP_BY = [
-    {"Type": "TAG", "Key": "kubernetes.io/cluster/EksShubh"},
-    {"Type": "TAG", "Key": "kubernetes.io/cluster/EksShubhCluster"}
-]
 METRICS = [
     'UnblendedCost',
+]
+# generated and set in function
+GROUP_BY = [
 ]
 FILTER = {
 
@@ -63,7 +62,6 @@ class AwsDailCostAnalysis():
         )
         # Fetching response data
         dates = []
-        print(response)
         services = set()
         costs_by_service = {}
         os.chdir("/tmp")
@@ -156,6 +154,18 @@ class AwsDailCostAnalysis():
             RawMessage={'Data': msg.as_string()}
         )
 
+    def set_tags(self):
+        # fetching cost allocated tags
+        response = self.ce.list_cost_allocation_tags(
+            Status='Active',
+            Type='UserDefined',
+        )
+        # setting group by object
+        keys = [{"Type": "TAG", "Key": str(i['TagKey'])}
+                for i in response['CostAllocationTags']]
+        # setting keys
+        self.group_by = keys
+
 
 def getDate():
     # Getting current date with time
@@ -169,15 +179,16 @@ def getDate():
 
 
 def lambda_handler(event, context):
-    # get_tag_values('EksShubh')
-    dailyCost = AwsDailCostAnalysis(
-        filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
-    # Generating chart
-    dailyCost.getCostByServicesAndGenerateChart()
-    # sending email
-    dailyCost.send_email()
-    # Creating AwsDailCostAnalysis
     try:
+        # Creating AwsDailCostAnalysis
+        dailyCost = AwsDailCostAnalysis(
+            filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
+        # setting group to tags
+        dailyCost.set_tags()
+        # Generating chart
+        dailyCost.getCostByServicesAndGenerateChart()
+        # sending email
+        dailyCost.send_email()
         return {
             'statusCode': 200,
             'body': json.dumps('Report sent!')
