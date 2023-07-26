@@ -15,8 +15,7 @@ METRICS = [
     'UnblendedCost',
 ]
 # generated and set in function
-GROUP_BY = [{'Type': 'TAG', 'Key': 'kubernetes.io/cluster/EksShubh'},
-            {'Type': 'TAG', 'Key': 'kubernetes.io/cluster/EksShubhCluster'}]
+GROUP_BY = [{'Type': 'DIMENSION', 'Key': 'SERVICE'}]
 FILTER = {
     'Tags':
         {
