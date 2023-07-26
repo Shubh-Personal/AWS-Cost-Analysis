@@ -15,10 +15,20 @@ METRICS = [
     'UnblendedCost',
 ]
 # generated and set in function
-GROUP_BY = [
-]
+GROUP_BY = [{'Type': 'TAG', 'Key': 'kubernetes.io/cluster/EksShubh'},
+            {'Type': 'TAG', 'Key': 'kubernetes.io/cluster/EksShubhCluster'}]
 FILTER = {
-
+    'Tags':
+        {
+            'Key': 'SubProduct',
+            'Values': [
+                'team1',
+                'team2',
+            ],
+            'MatchOptions': [
+                'EQUALS'
+            ]
+        }
 }
 GRANULARITY = 'DAILY'
 EMAIL_ADDRESS = 'shubhpatel4799@gmail.com'
@@ -65,7 +75,7 @@ class AwsDailCostAnalysis():
         services = set()
         costs_by_service = {}
         os.chdir("/tmp")
-        # print(response)
+        print(response)
         for result in response["ResultsByTime"]:
             start = result['TimePeriod']['Start']
             end = result['TimePeriod']['End']
@@ -84,7 +94,7 @@ class AwsDailCostAnalysis():
         # Create Excel file and worksheet
         workbook = xlsxwriter.Workbook('cost_analysis.xlsx')
         worksheet = workbook.add_worksheet()
-
+        print(response['ResultsByTime'])
         # Write data to worksheet
         row = 0
         col = 0
@@ -110,10 +120,9 @@ class AwsDailCostAnalysis():
         # Create stack graph
         col = 0
         chart = workbook.add_chart({'type': 'column', 'subtype': 'stacked'})
+
         for service in services:
             col += 1
-            print(col)
-            print(service)
             #     [sheetname, first_row, first_col, last_row, last_col]
             chart.add_series({
                 'name': service,
@@ -154,18 +163,6 @@ class AwsDailCostAnalysis():
             RawMessage={'Data': msg.as_string()}
         )
 
-    def set_tags(self):
-        # fetching cost allocated tags
-        response = self.ce.list_cost_allocation_tags(
-            Status='Active',
-            Type='UserDefined',
-        )
-        # setting group by object
-        keys = [{"Type": "TAG", "Key": str(i['TagKey'])}
-                for i in response['CostAllocationTags']]
-        # setting keys
-        self.group_by = keys
-
 
 def getDate():
     # Getting current date with time
@@ -179,16 +176,14 @@ def getDate():
 
 
 def lambda_handler(event, context):
+    # Creating AwsDailCostAnalysis
+    dailyCost = AwsDailCostAnalysis(
+        filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
+    # Generating chart
+    dailyCost.getCostByServicesAndGenerateChart()
+    # sending email
+    dailyCost.send_email()
     try:
-        # Creating AwsDailCostAnalysis
-        dailyCost = AwsDailCostAnalysis(
-            filter=FILTER, granularity=GRANULARITY, group_by=GROUP_BY, metrics=METRICS, email=EMAIL_ADDRESS)
-        # setting group to tags
-        dailyCost.set_tags()
-        # Generating chart
-        dailyCost.getCostByServicesAndGenerateChart()
-        # sending email
-        dailyCost.send_email()
         return {
             'statusCode': 200,
             'body': json.dumps('Report sent!')
