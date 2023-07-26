@@ -8,7 +8,7 @@ This lambda function fetches cost for specific services from cost explorer servi
 
 # Output
 
-![Screenshot](service_screenshot)
+<img src="./service_screenshot.png" width="128"/>
 
 # AWS Services Used
 
