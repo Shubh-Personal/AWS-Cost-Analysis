@@ -15,7 +15,7 @@ This lambda function fetches cost for specific services from cost explorer servi
 
 # Output
 
-<img src="./tag_screenshot.PNG" width="256">
+<img src="./ss.PNG" width="256">
 
 # Steps For Project Setup
 
