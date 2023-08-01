@@ -259,7 +259,7 @@ def lambda_handler(event, context):
     # Generating chart
     dailyCost.getCostByServicesAndGenerateChart()
     # sending email
-    # dailyCost.send_email()
+    dailyCost.send_email()
     try:
         return {
             'statusCode': 200,
