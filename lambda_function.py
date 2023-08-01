@@ -3,11 +3,14 @@ import os
 import sys
 import boto3
 import xlsxwriter
+import requests
+import base64
 import json
 from datetime import datetime, timedelta
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from botocore.exceptions import ClientError
 
 # Variables
 RESULT_FOR_LAST_DAYS = 6
@@ -15,14 +18,15 @@ METRICS = [
     'UnblendedCost',
 ]
 # generated and set in function
-GROUP_BY = [{'Type': 'DIMENSION', 'Key': 'SERVICE'}]
+GROUP_BY = [{'Type': 'TAG', 'Key': 'kubernetes.io/cluster/EksShubh'}
+            ]
 FILTER = {
     'Tags':
         {
-            'Key': 'SubProduct',
+            'Key': 'kubernetes.io/cluster/EksShubh',
             'Values': [
-                'team1',
-                'team2',
+                'owned',
+                'No tag key: kubernetes.io/cluster/EksShubh'
             ],
             'MatchOptions': [
                 'EQUALS'
@@ -32,9 +36,13 @@ FILTER = {
 GRANULARITY = 'DAILY'
 EMAIL_ADDRESS = 'shubhpatel4799@gmail.com'
 
+GITHUB_USERNAME = "Shubh-Personal"
+GITHUB_BASE = "./cost_collection_dir"
+GITHUB_BRANCH = "tmp_master"
+REPO_NAME = "AWS-Cost-Analysis"
+
+
 # Class for fetching daily cost using cost explorer and generating excel
-
-
 class AwsDailCostAnalysis():
 
     # constructor for setting up aws services object
@@ -54,10 +62,12 @@ class AwsDailCostAnalysis():
         self.email_address = email
 
     # function for getting aws daily cost for specific services
+
     def getCostByServicesAndGenerateChart(self):
         # getting the today and previous day for gettig cost
         end_date, start_date = getDate()
         # getting Aws cost for specific resources
+        # Fetching response data
         response = self.ce.get_cost_and_usage(
             TimePeriod={
                 'Start': start_date,
@@ -65,35 +75,43 @@ class AwsDailCostAnalysis():
             },
             Granularity=self.granularity,
             Metrics=self.metrics,
-            GroupBy=self.group_by
-            # ,
-            # Filter=self.filter
+            GroupBy=self.group_by,
+            Filter=self.filter
         )
-        # Fetching response data
+        # sending response data to git
+        print(response)
+        send_to_git(response)
         dates = []
         services = set()
         costs_by_service = {}
         os.chdir("/tmp")
-        print(response)
         for result in response["ResultsByTime"]:
             start = result['TimePeriod']['Start']
             end = result['TimePeriod']['End']
             dates.append(start)
             groups = result['Groups']
+            if len(groups) != 0:
+                # not filtered
+                for group in groups:
+                    service = group['Keys'][0]
+                    cost = float(group['Metrics']['UnblendedCost']['Amount'])
+                    services.add(service)
 
-            for group in groups:
-                service = group['Keys'][0]
-                cost = float(group['Metrics']['UnblendedCost']['Amount'])
-                services.add(service)
-
-                if service not in costs_by_service:
-                    costs_by_service[service] = []
-                costs_by_service[service].append(cost)
-
+                    if service not in costs_by_service:
+                        costs_by_service[service] = []
+                    costs_by_service[service].append(cost)
+            else:
+                # filtered
+                cost = float(result['Total']['UnblendedCost']['Amount'])
+                costs_by_service[self.group_by[0]['Key']+'_Total'] = []
+                services.add(self.group_by[0]['Key']+'_Total')
+                costs_by_service[self.group_by[0]['Key']+'_Total'].append(cost)
+        if len(services) > 1:
+            services.remove(self.group_by[0]['Key']+'_Total')
+            costs_by_service.pop(self.group_by[0]['Key']+'_Total')
         # Create Excel file and worksheet
         workbook = xlsxwriter.Workbook('cost_analysis.xlsx')
         worksheet = workbook.add_worksheet()
-        print(response['ResultsByTime'])
         # Write data to worksheet
         row = 0
         col = 0
@@ -138,6 +156,7 @@ class AwsDailCostAnalysis():
         workbook.close()
 
     # this function sends the generated email to user
+
     def send_email(self, filename="cost_analysis.xlsx"):
         msg = MIMEMultipart()
         # Metadata for Email
@@ -174,6 +193,58 @@ def getDate():
     return current_date_formatted, previous_date_formatted
 
 
+def get_secret():
+    secret_name = "serverless/github"
+    region_name = "us-east-1"
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+    get_secret_value_response = client.get_secret_value(
+        SecretId=secret_name
+    )
+
+    # Decrypts secret using the associated KMS key.
+    return get_secret_value_response['SecretString']
+
+# push data to git
+
+
+def send_to_git(data):
+    # Getting date
+    try:
+        _, today_date = getDate()
+
+        github_api = f"https://api.github.com/repos/{GITHUB_USERNAME}/{REPO_NAME}/contents/cost_explorer_data/{str(today_date)}/cost_response.json"
+
+        headers = {
+            "Authorization": f'''Bearer {json.loads(get_secret()).get('github_key')}''',
+            "Content-type": "application/vnd.github+json"
+        }
+        json_str = json.dumps(data)
+        encode_str = json_str.encode("utf-8")
+
+        body_data = {
+            "committer": {
+                "name": "AWS_Lambda",
+                "email": "shubhpatel4799@gmail.com"
+            },
+            # Put your commit message here.
+            "message": f"Cost Explorer response file [cost_response.json] saved on {str(today_date)} at {datetime.now()}",
+            "content": base64.b64encode(encode_str),
+            "branch": "cost_collection"
+        }
+        r = requests.put(github_api, headers=headers, json=body_data)
+    except Exception as e:
+        raise e
+    # repo.create_file(f"{GITHUB_BASE}/{str(today_date)}/cost_response.json", "committing files on " + str(today_date), content, branch=GITHUB_BRANCH)
+    # repo_obj.create_commit("Cost Json Updated",f"{GITHUB_BASE}.json","Cost JSON Added")
+    # Pushing Data
+    # repo_obj.push()
+
+
 def lambda_handler(event, context):
     # Creating AwsDailCostAnalysis
     dailyCost = AwsDailCostAnalysis(
@@ -181,7 +252,7 @@ def lambda_handler(event, context):
     # Generating chart
     dailyCost.getCostByServicesAndGenerateChart()
     # sending email
-    dailyCost.send_email()
+    # dailyCost.send_email()
     try:
         return {
             'statusCode': 200,
