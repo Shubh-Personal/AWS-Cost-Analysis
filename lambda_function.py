@@ -38,7 +38,7 @@ EMAIL_ADDRESS = 'shubhpatel4799@gmail.com'
 
 GITHUB_USERNAME = "Shubh-Personal"
 GITHUB_BASE = "./cost_collection_dir"
-GITHUB_BRANCH = "tmp_master"
+GITHUB_BRANCH = "cost_collection"
 REPO_NAME = "AWS-Cost-Analysis"
 
 
@@ -192,6 +192,8 @@ def getDate():
     previous_date_formatted = previous_time.strftime('%Y-%m-%d')
     return current_date_formatted, previous_date_formatted
 
+# Fetching github token Secret
+
 
 def get_secret():
     secret_name = "serverless/github"
@@ -213,36 +215,41 @@ def get_secret():
 
 
 def send_to_git(data):
-    # Getting date
     try:
+        # Getting date
         _, today_date = getDate()
 
+        # API for pushing code on github
         github_api = f"https://api.github.com/repos/{GITHUB_USERNAME}/{REPO_NAME}/contents/cost_explorer_data/{str(today_date)}/cost_response.json"
 
+        # Headers and fetching authentication token from AWS Secret Manager
         headers = {
             "Authorization": f'''Bearer {json.loads(get_secret()).get('github_key')}''',
             "Content-type": "application/vnd.github+json"
         }
+
+        # stringify json response
         json_str = json.dumps(data)
+
+        # encoding json response string
         encode_str = json_str.encode("utf-8")
 
+        # json body data
         body_data = {
             "committer": {
                 "name": "AWS_Lambda",
                 "email": "shubhpatel4799@gmail.com"
             },
-            # Put your commit message here.
             "message": f"Cost Explorer response file [cost_response.json] saved on {str(today_date)} at {datetime.now()}",
+            # encoding encoded content to base64
             "content": base64.b64encode(encode_str),
-            "branch": "cost_collection"
+            # branch where to upload code
+            "branch": GITHUB_BRANCH
         }
+        # Pushing Data
         r = requests.put(github_api, headers=headers, json=body_data)
     except Exception as e:
         raise e
-    # repo.create_file(f"{GITHUB_BASE}/{str(today_date)}/cost_response.json", "committing files on " + str(today_date), content, branch=GITHUB_BRANCH)
-    # repo_obj.create_commit("Cost Json Updated",f"{GITHUB_BASE}.json","Cost JSON Added")
-    # Pushing Data
-    # repo_obj.push()
 
 
 def lambda_handler(event, context):
