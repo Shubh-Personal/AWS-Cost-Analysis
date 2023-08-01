@@ -217,7 +217,7 @@ def get_secret():
 def send_to_git(data):
     try:
         # Getting date
-        _, today_date = getDate()
+        today_date,_ = getDate()
 
         # API for pushing code on github
         github_api = f"https://api.github.com/repos/{GITHUB_USERNAME}/{REPO_NAME}/contents/cost_explorer_data/{str(today_date)}/cost_response.json"
